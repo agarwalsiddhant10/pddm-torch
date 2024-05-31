@@ -25,7 +25,7 @@ def cost_per_step(pt, prev_pt, costs, actions, dones, reward_func):
 
 
 def calculate_costs(resulting_states_list, actions, reward_func,
-                    evaluating, take_exploratory_actions):
+                    evaluating, take_exploratory_actions, index=None):
     """Rank various predicted trajectories (by cost)
 
     Args:
@@ -103,18 +103,30 @@ def calculate_costs(resulting_states_list, actions, reward_func,
         # 1-a0 1-a1 1-a2 ... 2-a0 2-a1 2-a2 ... 3-a0 3-a1 3-a2...
         new_costs.append(costs[i::N])  #start, stop, step
 
+    # print('N: ', N)
+    # print('ensemble size: ', ensemble_size)
+    # print('Costs: ', costs.shape)
+    # print('New costs: ', len(new_costs))
+    # print('New costs[0]: ', len(new_costs[0]))
+
     #mean and std cost (across ensemble) [N,]
     mean_cost = np.mean(new_costs, 1)
     std_cost = np.std(new_costs, 1)
 
     #rank by rewards
+    # print('INDEX: ', index)
+    if index is not None:
+        # print('index: ', index)
+        new_costs = np.array(new_costs)
+        cost_for_ranking = new_costs[:, index]
+
     if evaluating:
         cost_for_ranking = mean_cost
     #sometimes rank by model disagreement, and sometimes rank by rewards
     else:
         if take_exploratory_actions:
             cost_for_ranking = mean_cost - 4 * std_cost
-            print("   ****** taking exploratory actions for this rollout")
+            # print("   ****** taking exploratory actions for this rollout")
         else:
             cost_for_ranking = mean_cost
 

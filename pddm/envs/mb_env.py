@@ -24,6 +24,8 @@ class MBEnvWrapper:
         self.env = env.env
         self.unwrapped_env = env.env.env
         self.action_dim = self.unwrapped_env.action_space.shape[0]
+        self.action_space = self.unwrapped_env.action_space
+        self.observation_space = self.unwrapped_env.observation_space
 
 
     def reset(self, reset_state=None, return_start_state=False):

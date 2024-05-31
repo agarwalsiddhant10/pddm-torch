@@ -76,7 +76,7 @@
 ## model training
 'warmstart_training': [False],
 'always_use_savedModel': [False],
-'batchsize': [1536],
+'batchsize': [512],
 'lr': [0.001],
 'nEpoch': [50],
 'nEpoch_init': [50],

@@ -15,6 +15,7 @@
 import numpy as np
 import numpy.random as npr
 import time
+import random
 
 #my imports
 from pddm.policies.random_shooting import RandomShooting
@@ -46,6 +47,7 @@ class MPCRollout:
         self.document_noised_actions = params.rollouts_document_noised_actions
         self.dt_from_xml = params.dt_from_xml
         self.noise_amount = 0.005
+        self.ensemble_size = params.ensemble_size
 
         self.reward_func = env.unwrapped_env.get_reward
 
@@ -66,6 +68,8 @@ class MPCRollout:
                         starting_observation,
                         controller_type,
                         take_exploratory_actions=False,
+                        eps=0.0,
+                        params=None,
                         isRandom=False):
         """
         Args:
@@ -85,6 +89,16 @@ class MPCRollout:
         """
 
         rollout_start = time.time()
+
+        model_index = random.randint(0, self.ensemble_size-1)
+        print('Model selected: ', model_index)
+        if eps > 0.0:
+            print('Executing suboptimal policy')
+        elif take_exploratory_actions is True:
+            print('Executing exploratory actions')
+        else:
+            print('Executing normal policy')
+
 
         #if evaluating, default to no action noise
         if self.evaluating:
@@ -174,9 +188,24 @@ class MPCRollout:
             if isRandom:
                 best_action, _ = self.rand_policy.get_action(None, None)
             else:
-                best_action, predicted_states_list = get_action(
-                    step, curr_state_K, actions_taken, starting_fullenvstate,
-                    self.evaluating, take_exploratory_actions)
+                p = random.uniform(0,1)
+                if p > eps:
+                    best_action, predicted_states_list = get_action(
+                        step, curr_state_K, actions_taken, starting_fullenvstate,
+                        self.evaluating, take_exploratory_actions, model_index)
+                else:
+                    if params is not None:
+                        print('Suboptimal action taken eps, p {}, {}'.format(eps, p))
+                        random_sampling_params = dict(
+                            sample_velocities = params.rand_policy_sample_velocities,
+                            vel_min = params.rand_policy_vel_min,
+                            vel_max = params.rand_policy_vel_max,
+                            hold_action = params.rand_policy_hold_action,)
+                        best_action, _ = self.rand_policy.get_action(None, None, random_sampling_params)
+                    else:
+                        best_action, predicted_states_list = get_action(
+                            step, curr_state_K, actions_taken, starting_fullenvstate,
+                            self.evaluating, take_exploratory_actions, model_index)
 
             #noise the action, as needed
             action_to_take = np.copy(best_action)

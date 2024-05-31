@@ -27,6 +27,8 @@ import pddm.envs
 from pddm.envs.gym_env import GymEnv
 from pddm.envs.mb_env import MBEnvWrapper
 from pddm.utils.data_structures import *
+from PIL import Image
+import os
 
 
 ###########################
@@ -37,6 +39,7 @@ from pddm.utils.data_structures import *
 def create_env(env_name):
 
     # setup environment
+    print('create env called')
     env = MBEnvWrapper(GymEnv(env_name))
 
     # dimensions
@@ -165,12 +168,12 @@ def check_dims(dataset_trainRand, env):
 
 
 def render_env(env):
-    render_fn = getattr(env.unwrapped_env, 'mj_render', None)
+    render_fn = getattr(env.unwrapped_env, 'mj_render', None)(mode='rgb_array')
     if not render_fn:
         render_fn = env.unwrapped_env.render
     else:
         env.unwrapped_env.mujoco_render_frames = True
-    render_fn()
+    return render_fn(mode='rgb_array')
 
 def render_stop(env):
     render_fn = getattr(env.unwrapped_env, 'mj_render', None)
@@ -217,7 +220,7 @@ def collect_random_rollouts(env,
     print("Performed ", len(rollouts), " rollouts, each with ",
           len(rollouts[0].states), " steps.")
     return rollouts
-
+    
 
 ## Perform a rollout, given actions
 
@@ -263,7 +266,9 @@ def visualize_rendering(rollout_info,
                         env,
                         args,
                         visualize=True,
-                        visualize_mpes=False):
+                        visualize_mpes=False,
+                        save_dir=None,
+                        start=0):
 
     ### reset env to the starting state
     curr_state = env.reset(reset_state=rollout_info['starting_state'])
@@ -303,7 +308,12 @@ def visualize_rendering(rollout_info,
             next_state, rew, done, env_info = env.step(action)
 
         if (visualize):
-            render_env(env)
+            img = render_env(env)
+            if save_dir:
+                save_path = save_dir + '/' + str(count+start) + '.png'
+                image = Image.fromarray(img)
+                image.save(save_path)
+            
 
         scores.append(env_info['score'])
         rewards.append(rew)
@@ -441,3 +451,69 @@ def plot_mean_std(mean_data, std_data, filename=None, label=None, newfig=True, c
             alpha=0.25)
         if filename is not None:
             fig.savefig(filename + '.png', dpi=200, bbox_inches='tight')
+
+
+def plot_histograms(save_dir, counter, data_rand, data_onpol, data_opt, r=3, c=7):
+    data_randnp = []
+    data_onpolnp = None
+    data_optnp = []
+
+    for rollout in data_rand:
+        data_randnp.append(np.copy(rollout.states))
+
+    for rollout in data_onpol:
+        # print('Rollout: ', rollout.states.shape)
+        # data_onpolnp.append(np.copy(rollout.states))
+        if data_onpolnp is None:
+            data_onpolnp = np.copy(rollout.states)
+        else:
+            data_onpolnp = np.concatenate((data_onpolnp, rollout.states))
+
+    # for rollout in data_opt:
+    #     data_optnp.append(rollout.states)
+
+    data_randnp = np.array(data_randnp)
+    # data_onpolnp = np.array(data_onpolnp)
+    data_optnp = np.array(data_opt['observations'])
+    print('Data rand np: ', data_randnp.shape)
+    print('Optimal: ', data_optnp.shape)
+    if data_onpolnp is not None:
+        print('Onpolicy: ', data_onpolnp.shape)
+    if not os.path.exists(save_dir + '/hist'):
+        os.makedirs(save_dir + '/hist')
+    fig, ax = plt.subplots(nrows = r, ncols =c, figsize=(24, 10))
+    # plt.rcParams["figure.autolayout"] = True
+    # fig.subplots_adjust(top=0.8)
+    
+    for i in range(r):
+        for j in range(c):
+            # if c*i + j >= 18:
+            #     print('here')
+            #     # fig.delaxes(ax[3, 2])
+            #     fig.delaxes(ax[3, 3])
+            #     fig.delaxes(ax[3, 4])
+            #     fig.suptitle('Optimal States Cheetah GT vs Trained Model (Random + onpolicy)\n\n')
+            #     fig.tight_layout()
+            #     plt.savefig(save_dir + '/hist/hist_{}.png'.format(counter))
+            #     plt.close()
+            #     break
+
+            # print(data_randnp.reshape(-1, 18).shape)
+            ax[i, j].hist(data_randnp.reshape(-1, 21)[:, c*i + j], bins=20, alpha=0.2, normed=1, label="random training")
+            if data_onpolnp is not None and data_onpolnp.shape[0] > 0:
+                ax[i, j].hist(data_onpolnp.reshape(-1, 21)[:, c*i + j], bins=20, alpha=0.2, normed=1, label="on policy")
+
+            # print(data_optnp[:, c*i + j].shape)
+            ax[i, j].hist(data_optnp[:, c*i + j], bins=20, alpha=0.2, normed=1, label="optimal")
+            # ax[i, j].plot(x, obs_true[:, c*i+j], color='blue', label='ground truth')
+            # ax[i, j].plot(x, obs_pred[:, c*i+j], color='red', label='predicted')
+            # ax[i, j].fill_between(x, obs_pred[:, c*i + j] - model_states_std[:, c*i + j], obs_pred[:, c*i + j] + model_states_std[:, c*i + j], color='red', alpha=0.2)
+            ax[i, j].set_title('state[' + str(c*i+j) + ']')
+            ax[i, j].legend(loc='best')
+            ax[i, j].set_xlabel('state value')
+            ax[i, j].set_ylabel('frequency')
+
+    fig.suptitle('Optimal States DClaw GT vs Trained Model (Random + onpolicy)\n\n')
+    plt.tight_layout()
+    plt.savefig(save_dir + '/hist/hist_{}.png'.format(counter))
+    plt.close()

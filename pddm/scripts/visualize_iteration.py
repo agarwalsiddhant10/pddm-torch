@@ -55,6 +55,7 @@ def vis_iter(args, load_dir):
 
     rewards = []
     scores = []
+    save_dir = 'trajs_bb'
     for vis_index in range(len(rollouts_info)):
 
         print("\n\nROLLOUT NUMBER ", vis_index, " .... num steps loaded: ", rollouts_info[vis_index]['actions'].shape[0])
@@ -65,7 +66,9 @@ def vis_iter(args, load_dir):
             use_env,
             params,
             visualize=True,
-            visualize_mpes=args.view_live_mpe_plot)
+            visualize_mpes=args.view_live_mpe_plot,
+            save_dir=save_dir,
+            start=vis_index*rollouts_info[vis_index]['actions'].shape[0])
         rewards.append(np.sum(rewards_for_rollout))
         scores.append(np.mean(scores_for_rollout[-5:])) # rollout_meanFinalScore
 

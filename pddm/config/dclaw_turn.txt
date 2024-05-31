@@ -29,7 +29,7 @@
 'env_name': ['pddm_dclaw_turn-v0'],
 'rollout_length': [40],
 'num_iters': [150],
-'num_trajectories_per_iter': [20],
+'num_trajectories_per_iter': [40],
 
 ## continue
 'continue_run': [-1],
@@ -52,8 +52,8 @@
 
 ## collect random rollouts
 'load_existing_random_data': [False],
-'num_rand_rollouts_train': [50],
-'num_rand_rollouts_val': [10],
+'num_rand_rollouts_train': [200],
+'num_rand_rollouts_val': [20],
 'rand_rollout_length': [40],
 'use_threading': [True],
 
@@ -69,14 +69,14 @@
 
 ## arch
 'num_fc_layers': [2],
-'depth_fc_layers': [250],
+'depth_fc_layers': [512],
 'ensemble_size': [3],
 'K': [1],
 
 ## model training
 'warmstart_training': [False],
 'always_use_savedModel': [False],
-'batchsize': [1536],
+'batchsize': [1024],
 'lr': [0.001],
 'nEpoch': [40],
 'nEpoch_init': [40],

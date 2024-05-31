@@ -69,7 +69,7 @@
 
 ## arch
 'num_fc_layers': [2],
-'depth_fc_layers': [250],
+'depth_fc_layers': [1280],
 'ensemble_size': [3],
 'K': [1],
 
@@ -78,8 +78,8 @@
 'always_use_savedModel': [False],
 'batchsize': [512],
 'lr': [0.001],
-'nEpoch': [40],
-'nEpoch_init': [40],
+'nEpoch': [80],
+'nEpoch_init': [80],
 
 ##########################
 ##### controller

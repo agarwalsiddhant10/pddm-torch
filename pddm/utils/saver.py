@@ -42,14 +42,14 @@ class Saver:
 
     def save_initialData(self, params, rollouts_trainRand, rollouts_valRand):
 
-        pickle.dump(
-            rollouts_trainRand,
-            open(self.save_dir + '/training_data/train_rollouts_rand.pickle', 'wb'),
-            pickle.HIGHEST_PROTOCOL)
-        pickle.dump(
-            rollouts_valRand,
-            open(self.save_dir + '/training_data/val_rollouts_rand.pickle',
-                 'wb'), pickle.HIGHEST_PROTOCOL)
+        # pickle.dump(
+        #     rollouts_trainRand,
+        #     open(self.save_dir + '/training_data/train_rollouts_rand.pickle', 'wb'),
+        #     pickle.HIGHEST_PROTOCOL)
+        # pickle.dump(
+        #     rollouts_valRand,
+        #     open(self.save_dir + '/training_data/val_rollouts_rand.pickle',
+        #          'wb'), pickle.HIGHEST_PROTOCOL)
         pickle.dump(params, open(self.save_dir + '/params.pkl', 'wb'),
                     pickle.HIGHEST_PROTOCOL)
 
@@ -62,11 +62,11 @@ class Saver:
 
         # save the model under current iteration number
         # but also update the finalModel.ckpt too
-        save_path1 = self.save_dir + '/models/model_aggIter' + str(self.iter_num) + '.ckpt'
-        torch.save(self.model, save_path1)
+        # save_path1 = self.save_dir + '/models/model_aggIter' + str(self.iter_num) + '.ckpt'
+        # torch.save(self.model, save_path1)
         save_path2 = self.save_dir + '/models/finalModel.ckpt'
         torch.save(self.model, save_path2)
-        print("Model saved at ", save_path1)
+        # print("Model saved at ", save_path1)
 
     ############################################################################################
     ##### The following 2 saves together represent a single "iteration"
@@ -81,32 +81,32 @@ class Saver:
             IPython.embed()
 
         #on-policy training data (used in conjunction w random training data) to train the dynamics model at this iteration
-        pickle.dump(
-            save_data.train_rollouts_onPol,
-            open(
-                self.save_dir + '/training_data/train_rollouts_onPol_iter' +
-                str(self.iter_num) + '.pickle', 'wb'),
-            protocol=pickle.HIGHEST_PROTOCOL)
-        pickle.dump(
-            save_data.val_rollouts_onPol,
-            open(
-                self.save_dir + '/training_data/val_rollouts_onPol_iter' + str(
-                    self.iter_num) + '.pickle', 'wb'),
-            protocol=pickle.HIGHEST_PROTOCOL)
+        # pickle.dump(
+        #     save_data.train_rollouts_onPol,
+        #     open(
+        #         self.save_dir + '/training_data/train_rollouts_onPol_iter' +
+        #         str(self.iter_num) + '.pickle', 'wb'),
+        #     protocol=pickle.HIGHEST_PROTOCOL)
+        # pickle.dump(
+        #     save_data.val_rollouts_onPol,
+        #     open(
+        #         self.save_dir + '/training_data/val_rollouts_onPol_iter' + str(
+        #             self.iter_num) + '.pickle', 'wb'),
+        #     protocol=pickle.HIGHEST_PROTOCOL)
 
-        #mean/std info
-        pickle.dump(
-            save_data.normalization_data,
-            open(
-                self.save_dir + '/training_data/normalization_data_' + str(
-                    self.iter_num) + '.pickle', 'wb'),
-            protocol=pickle.HIGHEST_PROTOCOL)
+        # #mean/std info
+        # pickle.dump(
+        #     save_data.normalization_data,
+        #     open(
+        #         self.save_dir + '/training_data/normalization_data_' + str(
+        #             self.iter_num) + '.pickle', 'wb'),
+        #     protocol=pickle.HIGHEST_PROTOCOL)
 
-        #losses and sample complexity
-        np.save(self.save_dir + '/losses/list_training_loss.npy',
-                save_data.training_losses)
-        np.save(self.save_dir + '/datapoints_per_agg.npy',
-                save_data.training_numData)
+        # #losses and sample complexity
+        # np.save(self.save_dir + '/losses/list_training_loss.npy',
+        #         save_data.training_losses)
+        # np.save(self.save_dir + '/datapoints_per_agg.npy',
+        #         save_data.training_numData)
 
         #train/val losses from model training
         np.save(self.save_dir + '/losses/training_losses_iter' + str(self.iter_num)

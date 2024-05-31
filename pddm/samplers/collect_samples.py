@@ -62,6 +62,7 @@ class CollectSamples(object):
 
         starttime = time.time()
         prev_action = None
+        observations.append(observation)
         for step_num in range(steps_per_rollout):
 
             # get action

@@ -44,7 +44,14 @@ class DataProcessor:
 
     def update_stats(self, model, dataset_trainRand, dataset_trainOnPol):
 
-        if (dataset_trainOnPol.dataX.shape[0] == 0):
+        print('Rand dataset shape', dataset_trainRand.dataX.shape)
+        if (dataset_trainRand.dataX.shape[0] == 0):
+            # print('here')
+            temp_x = dataset_trainOnPol.dataX
+            temp_y = dataset_trainOnPol.dataY
+            temp_z = dataset_trainOnPol.dataZ
+
+        elif (dataset_trainOnPol.dataX.shape[0] == 0):
             temp_x = dataset_trainRand.dataX
             temp_y = dataset_trainRand.dataY
             temp_z = dataset_trainRand.dataZ
@@ -143,6 +150,81 @@ class DataProcessor:
         dataX = self.array_datatype(np.array(all_states_K))
         dataY = self.array_datatype(np.array(all_actions_K))
         dataZ = self.array_datatype(np.array(dataZ))
+
+        #add some supervised learning noise (to help model training)
+        if self.params.make_training_dataset_noisy:
+            dataX = add_noise(dataX, self.params.noiseToSignal)
+            dataZ = add_noise(dataZ, self.params.noiseToSignal)
+
+        ###############################
+        ### double the data
+        # e.g., for baoding balls
+        # by switching the 2 objects' data
+        # (doesn't matter which ball is where)
+        ###############################
+
+        if (self.duplicateData_switchObjs):
+
+            obj_start1, obj_start2, target_start1, target_start2 = self.indices_for_switching
+
+            dataX_second = dataX.copy()
+            dataX_temp = dataX.copy()
+            dataZ_second = dataZ.copy()
+            dataZ_temp = dataZ.copy()
+
+            #switch for dataX
+            dataX_second[:, :, obj_start1:obj_start1 + 6] = dataX_temp[:, :, obj_start2:obj_start2 + 6]
+            dataX_second[:, :, obj_start2:obj_start2 + 6] = dataX_temp[:, :, obj_start1:obj_start1 + 6]
+            dataX_second[:, :, target_start1:target_start1 + 2] = dataX_temp[:, :, target_start2:]
+            dataX_second[:, :, target_start2:] = dataX_temp[:, :, target_start1:target_start1 + 2]
+
+            #switch for dataZ
+            dataZ_second[:, obj_start1:obj_start1 + 6] = dataZ_temp[:, obj_start2:obj_start2 + 6]
+            dataZ_second[:, obj_start2:obj_start2 + 6] = dataZ_temp[:, obj_start1:obj_start1 + 6]
+            dataZ_second[:, target_start1:target_start1 + 2] = dataZ_temp[:, target_start2:]
+            dataZ_second[:, target_start2:] = dataZ_temp[:, target_start1:target_start1 + 2]
+
+            #concat
+            dataX = np.concatenate([dataX, dataX_second])
+            dataY = np.concatenate([dataY, dataY])
+            dataZ = np.concatenate([dataZ, dataZ_second])
+
+        return Dataset(dataX, dataY, dataZ)
+
+    def convertSAToDatasets(self, states, actions):
+        # print('states: ', states.shape)
+        all_states_K = []
+        all_actions_K = []
+        all_differences_K = []
+        all_differences_single = []
+        K = self.params.K
+        num_trajectories = states.shape[0]
+
+        for i in range(num_trajectories):
+
+            state = states[i]
+            # print('state: ', state.shape)
+            action = actions[i]
+
+            #the past K timesteps
+            for step in range(K, len(state)):
+                all_states_K.append(state[step - K:step])
+                all_actions_K.append(action[step - K:step])
+                all_differences_single.append(state[step] - state[step - 1])
+
+        #training labels:
+        dataZ = np.array(all_differences_single)
+
+        #turn the list of rollouts into large arrays of data
+        dataX = self.array_datatype(np.array(all_states_K))
+        # print(np.array(all_states_K).shape)
+        dataY = self.array_datatype(np.array(all_actions_K))
+        dataZ = self.array_datatype(np.array(dataZ))
+        # print(dataZ.shape)
+        # print('_______')
+        # print(dataX.shape)
+        # print(dataY.shape)
+        # print(dataZ.shape)
 
         #add some supervised learning noise (to help model training)
         if self.params.make_training_dataset_noisy:

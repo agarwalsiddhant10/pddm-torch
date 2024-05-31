@@ -91,9 +91,15 @@ class HalfCheetahEnv(mujoco_env.MujocoEnv, utils.EzPickle):
                     'score': score}
         return ob, rew, done, env_info
 
+    # def _get_obs_temp(self):
+
+    #     obs_full = np.concatenate([
+    #         self.obs_dict['joints_pos'], #9
+    #         self.obs_dict['joints_vel'], #9
+    #     ])
+    #     return obs, obs_full
 
     def _get_obs(self):
-
         self.obs_dict = {}
         self.obs_dict['joints_pos'] = self.sim.data.qpos.flat.copy()
         self.obs_dict['joints_vel'] = self.sim.data.qvel.flat.copy()
@@ -102,6 +108,7 @@ class HalfCheetahEnv(mujoco_env.MujocoEnv, utils.EzPickle):
             self.obs_dict['joints_pos'], #9
             self.obs_dict['joints_vel'], #9
         ])
+        
 
 
     def reset_model(self):

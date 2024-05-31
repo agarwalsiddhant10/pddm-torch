@@ -62,7 +62,7 @@ class CollectSamples(object):
 
         #reset env
         observation, starting_state = self.env.reset(return_start_state=True)
-
+        # observations.append(observation)
         prev_action = None
         for step_num in range(steps_per_rollout):
 

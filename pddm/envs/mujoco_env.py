@@ -149,7 +149,7 @@ class MujocoEnv(gym.Env):
                 self.mj_render()
 
     def render(self,
-               mode='human',
+               mode='rgb_array',
                width=DEFAULT_RENDER_SIZE,
                height=DEFAULT_RENDER_SIZE,
                camera_id=-1):
@@ -187,9 +187,9 @@ class MujocoEnv(gym.Env):
     def close(self):
         self.sim_robot.close()
 
-    def mj_render(self):
+    def mj_render(self, mode='human'):
         """Backwards compatibility with MJRL."""
-        self.render(mode='human')
+        self.render(mode=mode)
 
     def state_vector(self):
         state = self.sim.get_state()

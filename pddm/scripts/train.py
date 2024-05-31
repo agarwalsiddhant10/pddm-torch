@@ -22,6 +22,7 @@ import pickle
 import sys
 import argparse
 import traceback
+import random
 
 #my imports
 from pddm.policies.policy_random import Policy_Random
@@ -210,6 +211,10 @@ def run_job(args, save_dir=None):
     rollouts_info_prevIter, list_mpes, list_scores, list_rewards = None, None, None, None
     while counter < num_iters:
 
+        print('Iter: {}'.format(counter))
+        print('Num of training on policy rollouts: {}'.format(len(rollouts_trainOnPol)))
+        print('Num of val on policy rollouts: {}'.format(len(rollouts_valOnPol)))
+        
         #init vars for this iteration
         saver_data = DataPerIter()
         saver.iter_num = counter
@@ -285,7 +290,8 @@ def run_job(args, save_dir=None):
                     print("\n\nModel restored from ", restore_path, "\n\n")
         else:
             # sess.run(tf.global_variables_initializer())
-            dyn_models = Dyn_Model(inputSize, outputSize, acSize, params=args)
+            # dyn_models = Dyn_Model(inputSize, outputSize, acSize, params=args)
+            dyn_models.reinitialize()
 
         #number of training epochs
         if counter==0: nEpoch_use = args.nEpoch_init
@@ -330,11 +336,22 @@ def run_job(args, save_dir=None):
         list_scores = []
         list_mpes = []
 
+        # rollouts_info_subopt = []
+        # list_rewards_subopt = []
+        # list_scores_subopt = []
+        # list_mpes_subopt = []
+
+        rollouts_info_rand = []
+        list_rewards_rand = []
+        list_scores_rand = []
+        list_mpes_rand = []
+
         if not args.print_minimal:
             print("\n#####################################")
             print("performing on-policy MPC rollouts... iter ", counter)
             print("#####################################\n")
 
+        num_trajectories_per_iter = 50
         for rollout_num in range(num_trajectories_per_iter):
 
             ###########################################
@@ -369,6 +386,83 @@ def run_job(args, save_dir=None):
 
         rollouts_info_prevIter = rollouts_info.copy()
 
+        ####################################################
+        ########## Sub optimal rollouts ####################
+        ####################################################
+
+        for rollout_num in range(50):
+
+            ###########################################
+            ########## perform 1 MPC rollout
+            ###########################################
+
+            if not args.print_minimal:
+                print("\n####################### Performing MPC rollout #",
+                        rollout_num)
+
+            #reset env randomly
+            starting_observation, starting_state = env.reset(return_start_state=True)
+
+            rollout_info_subopt = mpc_rollout.perform_rollout(
+                starting_state,
+                starting_observation,
+                controller_type=args.controller_type,
+                take_exploratory_actions=False,
+                eps=0.5,
+                params=args)
+
+            # Note: can sometimes set take_exploratory_actions=True
+            # in order to use ensemble disagreement for exploration
+
+            ###########################################
+            ####### save rollout info (if long enough)
+            ###########################################
+
+            if len(rollout_info_subopt['observations']) > K:
+                list_rewards_rand.append(rollout_info_subopt['rollout_rewardTotal'])
+                list_scores_rand.append(rollout_info_subopt['rollout_meanFinalScore'])
+                list_mpes_rand.append(np.mean(rollout_info_subopt['mpe_1step']))
+                rollouts_info_rand.append(rollout_info_subopt)
+
+        ####################################################
+        ########## Exploratory rollouts ####################
+        ####################################################
+
+        for rollout_num in range(30):
+
+            ###########################################
+            ########## perform 1 MPC rollout
+            ###########################################
+
+            if not args.print_minimal:
+                print("\n####################### Performing MPC rollout #",
+                        rollout_num)
+
+            #reset env randomly
+            starting_observation, starting_state = env.reset(return_start_state=True)
+
+            rollout_info_exp = mpc_rollout.perform_rollout(
+                starting_state,
+                starting_observation,
+                controller_type=args.controller_type,
+                take_exploratory_actions=True)
+
+            # Note: can sometimes set take_exploratory_actions=True
+            # in order to use ensemble disagreement for exploration
+
+            ###########################################
+            ####### save rollout info (if long enough)
+            ###########################################
+
+            if len(rollout_info_exp['observations']) > K:
+                list_rewards_rand.append(rollout_info_exp['rollout_rewardTotal'])
+                list_scores_rand.append(rollout_info_exp['rollout_meanFinalScore'])
+                list_mpes_rand.append(np.mean(rollout_info_exp['mpe_1step']))
+                rollouts_info_rand.append(rollout_info_exp)
+
+
+        # rollouts_info_prevIter = rollouts_info.copy()
+
         # visualize, if desired
         if args.visualize_MPC_rollout:
             print("\n\nPAUSED FOR VISUALIZATION. Continue when ready to visualize.")
@@ -380,19 +474,34 @@ def run_job(args, save_dir=None):
         #########################################################
         ### aggregate some random rollouts into training data
         #########################################################
+        # if counter >= 20:
+        #     num_rand_rollouts = 50
+        #     rollouts_rand = collect_random_rollouts(
+        #         env, random_policy, num_rand_rollouts, args.rollout_length,
+        #         dt_from_xml, args)
 
-        num_rand_rollouts = 5
-        rollouts_rand = collect_random_rollouts(
-            env, random_policy, num_rand_rollouts, args.rollout_length,
-            dt_from_xml, args)
+        #     numData_train_rand += len(rollouts_rand)
 
-        #convert (rollouts --> dataset)
-        dataset_rand_new = data_processor.convertRolloutsToDatasets(
-            rollouts_rand)
+        #     #convert (rollouts --> dataset)
+        #     dataset_trainRand_new = data_processor.convertRolloutsToDatasets(
+        #         rollouts_rand)
+
+        #     dataset_trainRand = concat_datasets(dataset_trainRand,
+        #                                         dataset_trainRand_new)
+
+            # num_rand_rollouts = 10
+            # rollouts_rand = collect_random_rollouts(
+            #     env, random_policy, num_rand_rollouts, args.rollout_length,
+            #     dt_from_xml, args)
+
+            # dataset_valRand = data_processor.convertRolloutsToDatasets(
+            #     rollouts_rand)
+
+        
 
         #concat this dataset with the existing dataset_trainRand
-        dataset_trainRand = concat_datasets(dataset_trainRand,
-                                            dataset_rand_new)
+        # dataset_trainRand = concat_datasets(dataset_trainRand,
+        #                                     dataset_trainRand_new)
 
         #########################################################
         ### aggregate MPC rollouts into train/val
@@ -401,6 +510,9 @@ def run_job(args, save_dir=None):
         num_mpc_rollouts = len(rollouts_info)
         rollouts_train = []
         rollouts_val = []
+
+        num_train_traj = int(0.9 * num_mpc_rollouts)
+        num_val_traj = num_mpc_rollouts - num_train_traj
 
         for i in range(num_mpc_rollouts):
             rollout = Rollout(rollouts_info[i]['observations'],
@@ -413,8 +525,55 @@ def run_job(args, save_dir=None):
             else:
                 rollouts_val.append(rollout)
 
+        num_mpc_rollouts_rand = len(rollouts_info_rand)
+        random.shuffle(rollouts_info_rand)
+        rollouts_train_rand = []
+        rollouts_val_rand = []
+
+        num_train_traj_rand = int(0.9 * num_mpc_rollouts_rand)
+        num_val_traj_rand = num_mpc_rollouts_rand - num_train_traj_rand
+
+        for i in range(num_mpc_rollouts_rand):
+            rollout = Rollout(rollouts_info_rand[i]['observations'],
+                                rollouts_info_rand[i]['actions'],
+                                rollouts_info_rand[i]['rollout_rewardTotal'],
+                                rollouts_info_rand[i]['starting_state'])
+
+            if i<int(num_mpc_rollouts_rand * 0.9):
+                rollouts_train.append(rollout)
+            else:
+                rollouts_val.append(rollout)
+
+        # numData_train_rand += len(rollouts_train_rand)
+
+
+        # dataset_train_rand_new = data_processor.convertRolloutsToDatasets(
+                # rollouts_train_rand)
+
+        # dataset_val_rand_new = data_processor.convertRolloutsToDatasets(
+                # rollouts_val_rand)
+
+        # dataset_trainRand = concat_datasets(dataset_trainRand,
+                                            # dataset_train_rand_new)
+
+        # dataset_valRand = concat_datasets(dataset_valRand,
+                                            # dataset_val_rand_new)
         #aggregate into training data
-        if counter==0: rollouts_valOnPol = []
+        if counter==0: 
+            rollouts_valOnPol = []
+
+        if counter >= 20:
+            rollouts_trainOnPol = rollouts_trainOnPol[num_train_traj:]
+            rollouts_valOnPol = rollouts_valOnPol[num_val_traj:]
+
+        # if counter >= 10:
+        #     rollouts_trainRand = rollouts_trainRand[-10:]
+        #     rollouts_valRand = rollouts_valRand[-10:]
+        #     dataset_trainRand = data_processor.convertRolloutsToDatasets(
+        #         rollouts_trainRand)
+        #     dataset_valRand = data_processor.convertRolloutsToDatasets(
+        #         rollouts_valRand)
+
         rollouts_trainOnPol = rollouts_trainOnPol + rollouts_train
         rollouts_valOnPol = rollouts_valOnPol + rollouts_val
 

@@ -78,7 +78,7 @@ class MPPI(object):
         return self.mppi_mean[0]
 
     def get_action(self, step_number, curr_state_K, actions_taken_so_far,
-                   starting_fullenvstate, evaluating, take_exploratory_actions):
+                   starting_fullenvstate, evaluating, take_exploratory_actions, index=None):
 
         # init vars
         curr_state_K = np.array(curr_state_K)  #[K, sa_dim]
@@ -156,6 +156,7 @@ class MPPI(object):
             resulting_states = [entry['observations'] for entry in paths]
             resulting_states = np.swapaxes(resulting_states, 0, 1)
             resulting_states_list = [resulting_states]
+            index=None
         else:
             resulting_states_list = self.dyn_models.do_forward_sim(
                 [curr_state_K, 0], np.copy(all_acs))
@@ -167,7 +168,7 @@ class MPPI(object):
 
         # calculate costs [N,]
         costs, mean_costs, std_costs = calculate_costs(resulting_states_list, all_samples,
-                                self.reward_func, evaluating, take_exploratory_actions)
+                                self.reward_func, evaluating, take_exploratory_actions, index)
 
         # uses all paths to update action mean (for horizon steps)
         # Note: mppi_update needs rewards, so pass in -costs
